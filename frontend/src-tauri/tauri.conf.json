@@ -28,9 +28,7 @@
       "deb": {
         "depends": ["libwebkit2gtk-4.1-dev", "build-essential", "libssl-dev", "libgtk-3-dev", "libayatana-appindicator3-dev", "librsvg2-dev"]
       },
-      "externalBin": [
-        "binaries/weather-service"
-      ],
+      "externalBin": [],
       "icon": [
         "icons/32x32.png",
         "icons/128x128.png",
@@ -47,10 +45,7 @@
         "providerShortName": "KosovoWeather",
         "signingIdentity": null
       },
-      "resources": [
-        "icons/*",
-        "assets/*"
-      ],
+      "resources": [],
       "shortDescription": "Weather app for Kosovo",
       "targets": "all",
       "windows": {

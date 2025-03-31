@@ -23,7 +23,7 @@ pub enum AppError {
 }
 
 // Result type alias for our custom error
-type Result<T> = std::result::Result<T, AppError>;
+type Result<T, E = AppError> = std::result::Result<T, E>;
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 struct Settings {
@@ -109,12 +109,12 @@ fn get_settings_path() -> Result<PathBuf> {
 }
 
 #[tauri::command]
-async fn get_settings(state: tauri::State<'_, AppState>) -> Result<Settings> {
-    let settings_guard = state.settings.lock().map_err(|e| AppError::System(e.to_string()))?;
+async fn get_settings(state: tauri::State<'_, AppState>) -> Result<Settings, String> {
+    let settings_guard = state.settings.lock().map_err(|e| e.to_string())?;
     if let Some(settings) = &*settings_guard {
         Ok(settings.clone())
     } else {
-        let settings = load_settings()?;
+        let settings = load_settings().map_err(|e| e.to_string())?;
         Ok(settings)
     }
 }
@@ -132,42 +132,42 @@ fn load_settings() -> Result<Settings> {
 }
 
 #[tauri::command]
-async fn save_settings(settings: Settings, state: tauri::State<'_, AppState>) -> Result<()> {
-    settings.validate()?;
-    let path = get_settings_path()?;
+async fn save_settings(settings: Settings, state: tauri::State<'_, AppState>) -> Result<(), String> {
+    settings.validate().map_err(|e| e.to_string())?;
+    let path = get_settings_path().map_err(|e| e.to_string())?;
     
     // Ensure the config directory exists
     if let Some(parent) = path.parent() {
-        fs::create_dir_all(parent)?;
+        fs::create_dir_all(parent).map_err(|e| e.to_string())?;
     }
 
-    let json = serde_json::to_string_pretty(&settings)?;
-    fs::write(&path, json)?;
+    let json = serde_json::to_string_pretty(&settings).map_err(|e| e.to_string())?;
+    fs::write(&path, json).map_err(|e| e.to_string())?;
 
     // Update state
-    let mut settings_guard = state.settings.lock().map_err(|e| AppError::System(e.to_string()))?;
+    let mut settings_guard = state.settings.lock().map_err(|e| e.to_string())?;
     *settings_guard = Some(settings);
 
     Ok(())
 }
 
 #[tauri::command]
-async fn reset_settings(state: tauri::State<'_, AppState>) -> Result<Settings> {
-    let path = get_settings_path()?;
+async fn reset_settings(state: tauri::State<'_, AppState>) -> Result<Settings, String> {
+    let path = get_settings_path().map_err(|e| e.to_string())?;
     if path.exists() {
-        fs::remove_file(&path)?;
+        fs::remove_file(&path).map_err(|e| e.to_string())?;
     }
 
     let settings = Settings::default();
-    let mut settings_guard = state.settings.lock().map_err(|e| AppError::System(e.to_string()))?;
+    let mut settings_guard = state.settings.lock().map_err(|e| e.to_string())?;
     *settings_guard = Some(settings.clone());
 
     Ok(settings)
 }
 
 #[tauri::command]
-async fn clear_cache(state: tauri::State<'_, AppState>) -> Result<()> {
-    let mut cache = state.cache.lock().map_err(|e| AppError::System(e.to_string()))?;
+async fn clear_cache(state: tauri::State<'_, AppState>) -> Result<(), String> {
+    let mut cache = state.cache.lock().map_err(|e| e.to_string())?;
     cache.data.clear();
     Ok(())
 }
