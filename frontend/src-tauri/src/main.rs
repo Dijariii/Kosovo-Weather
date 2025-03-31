@@ -188,9 +188,9 @@ fn main() {
         ])
         .setup(|app| {
             // Initialize settings on startup
-            let state: tauri::State<AppState> = app.state();
-            let settings = load_settings()?;
-            let mut settings_guard = state.settings.lock().map_err(|e| AppError::System(e.to_string()))?;
+            let state = app.state::<AppState>();
+            let settings = load_settings().map_err(|e| e.to_string())?;
+            let mut settings_guard = state.settings.lock().map_err(|e| e.to_string())?;
             *settings_guard = Some(settings);
             Ok(())
         })
