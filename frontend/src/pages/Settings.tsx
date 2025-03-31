@@ -1,164 +1,221 @@
-import { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
-  Box,
-  Paper,
-  Typography,
-  Switch,
-  FormControlLabel,
-  Select,
-  MenuItem,
-  FormControl,
-  InputLabel,
-  Button,
-  Divider,
+    Box,
+    FormControl,
+    FormControlLabel,
+    InputLabel,
+    MenuItem,
+    Select,
+    Switch,
+    TextField,
+    Typography,
+    Button,
+    Alert,
+    CircularProgress,
+    Snackbar,
 } from '@mui/material';
-import { motion } from 'framer-motion';
-import { invoke } from '@tauri-apps/api/tauri';
+import { getSettings, saveSettings, resetSettings, Settings as SettingsType, ApiError } from '../lib/api';
 
-interface Settings {
-  isDarkMode: boolean;
-  language: string;
-  temperatureUnit: 'celsius' | 'fahrenheit';
-  notifications: boolean;
-  autoRefresh: boolean;
-  refreshInterval: number;
-}
+export default function Settings() {
+    const [settings, setSettings] = useState<SettingsType | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [saving, setSaving] = useState(false);
+    const [error, setError] = useState<string | null>(null);
+    const [success, setSuccess] = useState<string | null>(null);
 
-const Settings = () => {
-  const [settings, setSettings] = useState<Settings>({
-    isDarkMode: false,
-    language: 'en',
-    temperatureUnit: 'celsius',
-    notifications: true,
-    autoRefresh: true,
-    refreshInterval: 5,
-  });
+    useEffect(() => {
+        loadSettings();
+    }, []);
 
-  useEffect(() => {
-    const loadSettings = async () => {
-      try {
-        const savedSettings = await invoke<Settings>('get_settings');
-        setSettings(savedSettings);
-      } catch (error) {
-        console.error('Failed to load settings:', error);
-      }
-    };
-
-    loadSettings();
-  }, []);
-
-  const handleSettingChange = async (key: keyof Settings, value: any) => {
-    try {
-      const newSettings = { ...settings, [key]: value };
-      await invoke('save_settings', { settings: newSettings });
-      setSettings(newSettings);
-    } catch (error) {
-      console.error('Failed to save settings:', error);
+    async function loadSettings() {
+        try {
+            setLoading(true);
+            setError(null);
+            const data = await getSettings();
+            setSettings(data);
+        } catch (err) {
+            setError(err instanceof ApiError ? err.message : 'Failed to load settings');
+        } finally {
+            setLoading(false);
+        }
     }
-  };
 
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-    >
-      <Typography variant="h4" className="mb-6">
-        Settings
-      </Typography>
+    async function handleSave() {
+        if (!settings) return;
 
-      <Paper className="p-4">
-        <Box className="space-y-4">
-          <FormControlLabel
-            control={
-              <Switch
-                checked={settings.isDarkMode}
-                onChange={(e) => handleSettingChange('isDarkMode', e.target.checked)}
-              />
-            }
-            label="Dark Mode"
-          />
+        try {
+            setSaving(true);
+            setError(null);
+            await saveSettings(settings);
+            setSuccess('Settings saved successfully');
+        } catch (err) {
+            setError(err instanceof ApiError ? err.message : 'Failed to save settings');
+        } finally {
+            setSaving(false);
+        }
+    }
 
-          <Divider />
+    async function handleReset() {
+        try {
+            setSaving(true);
+            setError(null);
+            const defaultSettings = await resetSettings();
+            setSettings(defaultSettings);
+            setSuccess('Settings reset to defaults');
+        } catch (err) {
+            setError(err instanceof ApiError ? err.message : 'Failed to reset settings');
+        } finally {
+            setSaving(false);
+        }
+    }
 
-          <FormControl fullWidth>
-            <InputLabel>Language</InputLabel>
-            <Select
-              value={settings.language}
-              label="Language"
-              onChange={(e) => handleSettingChange('language', e.target.value)}
-            >
-              <MenuItem value="en">English</MenuItem>
-              <MenuItem value="sq">Albanian</MenuItem>
-              <MenuItem value="tr">Turkish</MenuItem>
-              <MenuItem value="bs">Bosnian</MenuItem>
-            </Select>
-          </FormControl>
+    if (loading) {
+        return (
+            <Box display="flex" justifyContent="center" alignItems="center" minHeight="200px">
+                <CircularProgress />
+            </Box>
+        );
+    }
 
-          <FormControl fullWidth>
-            <InputLabel>Temperature Unit</InputLabel>
-            <Select
-              value={settings.temperatureUnit}
-              label="Temperature Unit"
-              onChange={(e) => handleSettingChange('temperatureUnit', e.target.value)}
-            >
-              <MenuItem value="celsius">Celsius (°C)</MenuItem>
-              <MenuItem value="fahrenheit">Fahrenheit (°F)</MenuItem>
-            </Select>
-          </FormControl>
+    if (!settings) {
+        return (
+            <Box m={2}>
+                <Alert severity="error">
+                    Failed to load settings
+                    <Button color="inherit" size="small" onClick={loadSettings}>
+                        Retry
+                    </Button>
+                </Alert>
+            </Box>
+        );
+    }
 
-          <Divider />
+    return (
+        <Box p={3}>
+            <Typography variant="h4" gutterBottom>
+                Settings
+            </Typography>
 
-          <FormControlLabel
-            control={
-              <Switch
-                checked={settings.notifications}
-                onChange={(e) => handleSettingChange('notifications', e.target.checked)}
-              />
-            }
-            label="Weather Alerts"
-          />
+            {error && (
+                <Alert severity="error" sx={{ mb: 2 }}>
+                    {error}
+                </Alert>
+            )}
 
-          <FormControlLabel
-            control={
-              <Switch
-                checked={settings.autoRefresh}
-                onChange={(e) => handleSettingChange('autoRefresh', e.target.checked)}
-              />
-            }
-            label="Auto Refresh"
-          />
-
-          {settings.autoRefresh && (
-            <FormControl fullWidth>
-              <InputLabel>Refresh Interval (minutes)</InputLabel>
-              <Select
-                value={settings.refreshInterval}
-                label="Refresh Interval (minutes)"
-                onChange={(e) => handleSettingChange('refreshInterval', e.target.value)}
-              >
-                <MenuItem value={1}>1 minute</MenuItem>
-                <MenuItem value={5}>5 minutes</MenuItem>
-                <MenuItem value={10}>10 minutes</MenuItem>
-                <MenuItem value={15}>15 minutes</MenuItem>
-                <MenuItem value={30}>30 minutes</MenuItem>
-              </Select>
+            <FormControl fullWidth margin="normal">
+                <FormControlLabel
+                    control={
+                        <Switch
+                            checked={settings.dark_mode}
+                            onChange={(e) => setSettings({ ...settings, dark_mode: e.target.checked })}
+                        />
+                    }
+                    label="Dark Mode"
+                />
             </FormControl>
-          )}
-        </Box>
 
-        <Box className="mt-6 flex justify-end">
-          <Button
-            variant="contained"
-            color="primary"
-            onClick={() => invoke('reset_settings')}
-          >
-            Reset to Defaults
-          </Button>
-        </Box>
-      </Paper>
-    </motion.div>
-  );
-};
+            <FormControl fullWidth margin="normal">
+                <InputLabel>Language</InputLabel>
+                <Select
+                    value={settings.language}
+                    onChange={(e) => setSettings({ ...settings, language: e.target.value })}
+                    label="Language"
+                >
+                    <MenuItem value="en">English</MenuItem>
+                    <MenuItem value="sq">Albanian</MenuItem>
+                    <MenuItem value="tr">Turkish</MenuItem>
+                    <MenuItem value="bs">Bosnian</MenuItem>
+                </Select>
+            </FormControl>
 
-export default Settings; 
+            <FormControl fullWidth margin="normal">
+                <InputLabel>Temperature Unit</InputLabel>
+                <Select
+                    value={settings.temperature_unit}
+                    onChange={(e) => setSettings({ ...settings, temperature_unit: e.target.value })}
+                    label="Temperature Unit"
+                >
+                    <MenuItem value="celsius">Celsius</MenuItem>
+                    <MenuItem value="fahrenheit">Fahrenheit</MenuItem>
+                </Select>
+            </FormControl>
+
+            <FormControl fullWidth margin="normal">
+                <FormControlLabel
+                    control={
+                        <Switch
+                            checked={settings.notifications_enabled}
+                            onChange={(e) =>
+                                setSettings({ ...settings, notifications_enabled: e.target.checked })
+                            }
+                        />
+                    }
+                    label="Enable Notifications"
+                />
+            </FormControl>
+
+            <FormControl fullWidth margin="normal">
+                <FormControlLabel
+                    control={
+                        <Switch
+                            checked={settings.auto_refresh}
+                            onChange={(e) => setSettings({ ...settings, auto_refresh: e.target.checked })}
+                        />
+                    }
+                    label="Auto Refresh"
+                />
+            </FormControl>
+
+            <FormControl fullWidth margin="normal">
+                <TextField
+                    label="Refresh Interval (seconds)"
+                    type="number"
+                    value={settings.refresh_interval}
+                    onChange={(e) =>
+                        setSettings({
+                            ...settings,
+                            refresh_interval: Math.max(60, parseInt(e.target.value) || 60),
+                        })
+                    }
+                    disabled={!settings.auto_refresh}
+                    inputProps={{ min: 60 }}
+                />
+            </FormControl>
+
+            <FormControl fullWidth margin="normal">
+                <TextField
+                    label="OpenWeatherMap API Key"
+                    type="password"
+                    value={settings.api_key || ''}
+                    onChange={(e) => setSettings({ ...settings, api_key: e.target.value })}
+                />
+            </FormControl>
+
+            <Box mt={3} display="flex" gap={2}>
+                <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={handleSave}
+                    disabled={saving}
+                >
+                    {saving ? <CircularProgress size={24} /> : 'Save Settings'}
+                </Button>
+                <Button
+                    variant="outlined"
+                    color="secondary"
+                    onClick={handleReset}
+                    disabled={saving}
+                >
+                    Reset to Defaults
+                </Button>
+            </Box>
+
+            <Snackbar
+                open={!!success}
+                autoHideDuration={3000}
+                onClose={() => setSuccess(null)}
+                message={success}
+            />
+        </Box>
+    );
+} 
