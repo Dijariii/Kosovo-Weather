@@ -1,0 +1,45 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-color: #1976d2;
+  --secondary-color: #dc004e;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen',
+    'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue',
+    sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.weather-card {
+  @apply bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 transition-all duration-300;
+}
+
+.weather-icon {
+  @apply w-16 h-16;
+}
+
+.temperature {
+  @apply text-4xl font-bold text-gray-900 dark:text-white;
+}
+
+.city-name {
+  @apply text-xl font-semibold text-gray-700 dark:text-gray-200;
+}
+
+.weather-details {
+  @apply grid grid-cols-2 gap-4 mt-4;
+}
+
+.detail-item {
+  @apply flex items-center space-x-2 text-gray-600 dark:text-gray-300;
+}
+
+.loading-spinner {
+  @apply animate-spin rounded-full h-8 w-8 border-b-2 border-primary;
+} 
